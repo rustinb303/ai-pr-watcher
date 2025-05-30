@@ -17,7 +17,9 @@ Explore the GitHub search queries used:
 
 ## Current Statistics
 
-| Project | Total PRs | Merged PRs | Merge Rate |
-| ------- | --------- | ---------- | ---------- |
-| Copilot | 10,056 | 2,556 | 25.42% |
-| Codex   | 69,319 | 57,646 | 83.16% |
+| Service | Total PRs | Merged PRs | Merge Rate | Total Commits |
+| ------- | --------- | ---------- | ---------- | ------------- |
+| Copilot | 10,058 | 2,565 | 25.50% | N/A           |
+| Codex   | 69,429 | 57,733 | 83.15% | N/A           |
+| Devin   | N/A       | N/A        | N/A        | 1 |
+| Jules   | N/A       | N/A        | N/A        | 0 |

@@ -20,6 +20,8 @@ Q = {
     "is:pr+head:copilot/+is:merged":    "copilot_merged",
     "is:pr+head:codex/":                "codex_total",
     "is:pr+head:codex/+is:merged":      "codex_merged",
+    'committer:"devin-ai-integration[bot]"': "devin_commits",
+    'committer:"google-labs-jules[bot]"': "jules_commits",
 }
 
 def collect_data():
@@ -32,9 +34,9 @@ def collect_data():
         cnt[key] = r.json()["total_count"]
 
     # Save data to CSV
-    timestamp = dt.datetime.now(dt.UTC).strftime("%Y‑%m‑%d %H:%M:%S")
+    timestamp = dt.datetime.now(dt.timezone.utc).strftime("%Y‑%m‑%d %H:%M:%S")
     row = [timestamp, cnt["copilot_total"], cnt["copilot_merged"],
-           cnt["codex_total"], cnt["codex_merged"]]
+           cnt["codex_total"], cnt["codex_merged"], cnt["devin_commits"], cnt["jules_commits"]]
 
     csv_file = Path("data.csv")
     is_new_file = not csv_file.exists()
@@ -42,7 +44,7 @@ def collect_data():
         writer = csv.writer(f)
         if is_new_file:
             writer.writerow(["timestamp", "copilot_total", "copilot_merged",
-                            "codex_total", "codex_merged"])
+                            "codex_total", "codex_merged", "devin_commits", "jules_commits"])
         writer.writerow(row)
 
     return csv_file
