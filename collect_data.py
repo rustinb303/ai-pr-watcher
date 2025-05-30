@@ -28,10 +28,25 @@ def collect_data():
     # Get data from GitHub API
     cnt = {}
     for query, key in Q.items():
-        r = requests.get(f"https://api.github.com/search/issues?q={query}",
-                        headers=HEADERS, timeout=30)
+        if "commits" in key:
+            # For commit searches, use the /search/commits endpoint
+            api_url = f"https://api.github.com/search/commits?q={query}"
+            # The 'Accept' header for commit search needs to be 'application/vnd.github.cloak-preview+json'
+            # according to some docs, but testing shows 'application/vnd.github+json' works for total_count.
+            # Let's stick to the existing HEADERS for now unless issues arise.
+        else:
+            # For PR searches (issues), use the /search/issues endpoint
+            api_url = f"https://api.github.com/search/issues?q={query}"
+
+        r = requests.get(api_url, headers=HEADERS, timeout=30)
         r.raise_for_status()
-        cnt[key] = r.json()["total_count"]
+        data = r.json()
+        cnt[key] = data["total_count"]
+
+        if key == "devin_commits":
+            print(f"Devin commits found: {cnt[key]}")
+        if key == "jules_commits":
+            print(f"Jules commits found: {cnt[key]}")
 
     # Save data to CSV
     timestamp = dt.datetime.now(dt.timezone.utc).strftime("%Y‑%m‑%d %H:%M:%S")

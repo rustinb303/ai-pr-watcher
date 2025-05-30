@@ -353,15 +353,19 @@ def update_github_pages(df):
     # Read the current index.html content
     index_content = index_path.read_text()
     
-    # Update the table data
+    # Update the table data for Copilot PRs, Merged PRs, and Merge Rate
+    # This regex targets the first three data cells specifically, leaving the rest of the row (e.g., the 'Total Commits' cell) untouched by this specific replacement.
+    copilot_pr_pattern = r'(<tr>\s*<td>Copilot</td>\s*<td>)[^<]*(</td>\s*<td>)[^<]*(</td>\s*<td>)[^<]*(</td>)'
     index_content = re.sub(
-        r'(<tr>\s*<td>Copilot</td>\s*<td>)[^<]*(</td>\s*<td>)[^<]*(</td>\s*<td>)[^<]*(</td>\s*</tr>)',
+        copilot_pr_pattern,
         rf'\g<1>{copilot_total}\g<2>{copilot_merged}\g<3>{copilot_rate:.2f}%\g<4>',
         index_content
     )
     
+    # Update the table data for Codex PRs, Merged PRs, and Merge Rate
+    codex_pr_pattern = r'(<tr>\s*<td>Codex</td>\s*<td>)[^<]*(</td>\s*<td>)[^<]*(</td>\s*<td>)[^<]*(</td>)'
     index_content = re.sub(
-        r'(<tr>\s*<td>Codex</td>\s*<td>)[^<]*(</td>\s*<td>)[^<]*(</td>\s*<td>)[^<]*(</td>\s*</tr>)',
+        codex_pr_pattern,
         rf'\g<1>{codex_total}\g<2>{codex_merged}\g<3>{codex_rate:.2f}%\g<4>',
         index_content
     )
@@ -370,19 +374,28 @@ def update_github_pages(df):
     if "<th>Total Commits</th>" not in index_content:
         index_content = index_content.replace("<th>Merge Rate</th>", "<th>Merge Rate</th>\n                        <th>Total Commits</th>")
 
-    # Update Copilot and Codex rows to include N/A for Total Commits
-    # Using \g<1> for consistency, though \1 would likely be fine here as it's at the end of the raw string part.
+    # Ensure Copilot row has PR data updated and the 5th cell is 'N/A' for commits, cleaning up any previous bad formatting.
+    # \g<1> captures "<tr><td>Copilot</td><td>...</td><td>...</td><td>...%</td>"
+    # \g<2> captures "</tr>"
+    # Using non-greedy match (?:.*?) for the content between the percentage cell and the row end.
+    copilot_row_cleanup_pattern = r'(<tr>\s*<td>Copilot</td>\s*<td>[^<]*</td>\s*<td>[^<]*</td>\s*<td>[^<]*%</td>)(?:.*?)(</tr>)'
     index_content = re.sub(
-        r'(<td>Copilot</td>\s*<td>[^<]*</td>\s*<td>[^<]*</td>\s*<td>[^<]*%</td>)',
-        r'\g<1>\n                        <td>N/A</td>',
-        index_content
+        copilot_row_cleanup_pattern,
+        rf'\g<1>\n                        <td>N/A</td>\n                    \g<2>',
+        index_content,
+        flags=re.DOTALL
     )
+
+    # Ensure Codex row has PR data updated and the 5th cell is 'N/A' for commits, cleaning up any previous bad formatting.
+    # Using non-greedy match (?:.*?) for the content between the percentage cell and the row end.
+    codex_row_cleanup_pattern = r'(<tr>\s*<td>Codex</td>\s*<td>[^<]*</td>\s*<td>[^<]*</td>\s*<td>[^<]*%</td>)(?:.*?)(</tr>)'
     index_content = re.sub(
-        r'(<td>Codex</td>\s*<td>[^<]*</td>\s*<td>[^<]*</td>\s*<td>[^<]*%</td>)',
-        r'\g<1>\n                        <td>N/A</td>',
-        index_content
+        codex_row_cleanup_pattern,
+        rf'\g<1>\n                        <td>N/A</td>\n                    \g<2>',
+        index_content,
+        flags=re.DOTALL
     )
-    
+
     # Add or update Devin row
     devin_row_pattern = re.compile(r'<tr>\s*<td>Devin</td>.*?</tr>', re.DOTALL)
     devin_row_html = f'<tr>\n                        <td>Devin</td>\n                        <td>N/A</td>\n                        <td>N/A</td>\n                        <td>N/A</td>\n                        <td>{devin_commits}</td>\n                    </tr>'
