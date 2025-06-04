@@ -43,24 +43,6 @@ def generate_chart(csv_file=None):
         df = df.iloc[indices]
         print(f"Limited chart to 8 data points evenly distributed across {total_points} total points.")
 
-    # Calculate percentages with safety checks
-    df["copilot_percentage"] = df.apply(
-        lambda row: (
-            (row["copilot_merged"] / row["copilot_total"] * 100)
-            if row["copilot_total"] > 0
-            else 0
-        ),
-        axis=1,
-    )
-    df["codex_percentage"] = df.apply(
-        lambda row: (
-            (row["codex_merged"] / row["codex_total"] * 100)
-            if row["codex_total"] > 0
-            else 0
-        ),
-        axis=1,
-    )
-
     # Adjust chart size based on data points
     num_points = len(df)
     if num_points <= 3:
@@ -72,56 +54,46 @@ def generate_chart(csv_file=None):
 
     # Create the combination chart
     fig, ax1 = plt.subplots(figsize=(fig_width, fig_height))
-    ax2 = ax1.twinx()
 
     # Prepare data
     x = np.arange(len(df))
     # Adjust bar width based on number of data points
     # We now have 4 groups of bars: Copilot (total/merged), Codex (total/merged), Devin (commits), Jules (commits)
     # So we need to accommodate them. Let's assign positions:
-    # Copilot: -1.5 * width
-    # Codex:   -0.5 * width
-    # Devin:    0.5 * width
-    # Jules:    1.5 * width
+    # New bar positions:
+    # Copilot Total: x - 1.5 * width (originally x - width/2 based on example, but keeping groups for now)
+    # Codex Total:   x - 0.5 * width (originally x + width/2 based on example)
+    # Devin Commits: x + 0.5 * width
+    # Jules Commits: x + 1.5 * width
+    # Let's try the example positions: Copilot @ x - width/2, Codex @ x + width/2
+    # This means the effective group centers are:
+    # Copilot: -0.5 * width
+    # Codex:    0.5 * width
+    # Devin:    1.5 * width (shifting by +width)
+    # Jules:    2.5 * width (shifting by +width)
     width = min(0.20, 0.8 / max(1, num_points * 0.8)) # Adjusted width for more bars
 
-    # Bar charts for totals and merged
+    # Bar charts for totals
     bars_copilot_total = ax1.bar(
-        x - 1.5 * width, # Shifted left
+        x - width / 2, # Centered example
         df["copilot_total"],
         width,
         label="Copilot Total",
         alpha=0.7,
         color="#87CEEB",
     )
-    bars_copilot_merged = ax1.bar(
-        x - 1.5 * width, # Shifted left
-        df["copilot_merged"],
-        width,
-        label="Copilot Merged",
-        alpha=1.0,
-        color="#4682B4",
-    )
 
     bars_codex_total = ax1.bar(
-        x - 0.5 * width, # Shifted left
+        x + width / 2, # Centered example
         df["codex_total"],
         width,
         label="Codex Total",
         alpha=0.7,
         color="#FFA07A",
     )
-    bars_codex_merged = ax1.bar(
-        x - 0.5 * width, # Shifted left
-        df["codex_merged"],
-        width,
-        label="Codex Merged",
-        alpha=1.0,
-        color="#CD5C5C",
-    )
 
     bars_devin_commits = ax1.bar(
-        x + 0.5 * width, # Shifted right
+        x + 1.5 * width, # Shifted right to make space
         df["devin_commits"],
         width,
         label="Devin Commits",
@@ -130,7 +102,7 @@ def generate_chart(csv_file=None):
     )
 
     bars_jules_commits = ax1.bar(
-        x + 1.5 * width, # Shifted right
+        x + 2.5 * width, # Shifted right further to make space
         df["jules_commits"],
         width,
         label="Jules Commits",
@@ -138,43 +110,13 @@ def generate_chart(csv_file=None):
         color="#DDA0DD", # Plum
     )
 
-    # Line charts for percentages (on secondary y-axis)
-    line_copilot = ax2.plot(
-        x,
-        df["copilot_percentage"],
-        "o-",
-        color="#000080",
-        linewidth=3,
-        markersize=10,
-        label="Copilot Success %",
-        markerfacecolor="white",
-        markeredgewidth=2,
-        markeredgecolor="#000080",
-    )
-
-    line_codex = ax2.plot(
-        x,
-        df["codex_percentage"],
-        "s-",
-        color="#8B0000",
-        linewidth=3,
-        markersize=10,
-        label="Codex Success %",
-        markerfacecolor="white",
-        markeredgewidth=2,
-        markeredgecolor="#8B0000",
-    )
-
     # Customize the chart
     ax1.set_xlabel("Data Points", fontsize=12, fontweight="bold")
     ax1.set_ylabel(
-        "PR Counts (Total & Merged)", fontsize=12, fontweight="bold", color="black"
-    )
-    ax2.set_ylabel(
-        "Merge Success Rate (%)", fontsize=12, fontweight="bold", color="black"
+        "Counts (PRs & Commits)", fontsize=12, fontweight="bold", color="black"
     )
 
-    title = "PR Analytics: Volume vs Success Rate Comparison"
+    title = "PR Analytics: Volume Comparison"
     ax1.set_title(title, fontsize=16, fontweight="bold", pad=20)
 
     # Set x-axis labels with timestamps
@@ -182,15 +124,11 @@ def generate_chart(csv_file=None):
     ax1.set_xticks(x)
     ax1.set_xticklabels(timestamps, rotation=45)
 
-    # Add legends
-    legend1 = ax1.legend(loc="upper left", bbox_to_anchor=(0, 0.95))
-    legend2 = ax2.legend(loc="upper right", bbox_to_anchor=(1, 0.95))
+    # Add legend
+    ax1.legend(loc="upper left", bbox_to_anchor=(0, 0.95))
 
     # Add grid
     ax1.grid(True, alpha=0.3, linestyle="--")
-
-    # Set percentage axis range
-    ax2.set_ylim(0, 100)
 
     # Add value labels on bars (with safety checks)
     def add_value_labels(ax, bars, format_str="{:.0f}"):
@@ -216,38 +154,9 @@ def generate_chart(csv_file=None):
                 )
 
     add_value_labels(ax1, bars_copilot_total)
-    add_value_labels(ax1, bars_copilot_merged)
     add_value_labels(ax1, bars_codex_total)
-    add_value_labels(ax1, bars_codex_merged)
     add_value_labels(ax1, bars_devin_commits)
     add_value_labels(ax1, bars_jules_commits)
-
-    # Add percentage labels on line points (with validation)
-    for i, (cop_pct, cod_pct) in enumerate(
-        zip(df["copilot_percentage"], df["codex_percentage"])
-    ):
-        # Only add labels if percentages are valid numbers
-        if pd.notna(cop_pct) and pd.notna(cod_pct):
-            ax2.annotate(
-                f"{cop_pct:.1f}%",
-                (i, cop_pct),
-                textcoords="offset points",
-                xytext=(0, 15),
-                ha="center",
-                fontsize=10,
-                fontweight="bold",
-                color="#000080",
-            )
-            ax2.annotate(
-                f"{cod_pct:.1f}%",
-                (i, cod_pct),
-                textcoords="offset points",
-                xytext=(0, -20),
-                ha="center",
-                fontsize=10,
-                fontweight="bold",
-                color="#8B0000",
-            )
 
     plt.tight_layout()
 
@@ -285,27 +194,25 @@ def update_readme(df):
     # Get the latest data
     latest = df.iloc[-1]
 
-    # Calculate merge rates
-    copilot_rate = (latest.copilot_merged / latest.copilot_total * 100) if latest.copilot_total > 0 else 0
-    codex_rate = (latest.codex_merged / latest.codex_total * 100) if latest.codex_total > 0 else 0
-
     # Format numbers with commas
     copilot_total = f"{latest.copilot_total:,}"
-    copilot_merged = f"{latest.copilot_merged:,}"
+    # copilot_merged = f"{latest.copilot_merged:,}" # Removed
     codex_total = f"{latest.codex_total:,}"
-    codex_merged = f"{latest.codex_merged:,}"
+    # codex_merged = f"{latest.codex_merged:,}" # Removed
     devin_commits = f"{latest.devin_commits:,}"
     jules_commits = f"{latest.jules_commits:,}"
+    # copilot_rate = (latest.copilot_merged / latest.copilot_total * 100) if latest.copilot_total > 0 else 0 # Removed
+    # codex_rate = (latest.codex_merged / latest.codex_total * 100) if latest.codex_total > 0 else 0 # Removed
 
     # Create the new table content
     table_content = f"""## Current Statistics
 
-| Service | Total PRs | Merged PRs | Merge Rate | Total Commits |
-| ------- | --------- | ---------- | ---------- | ------------- |
-| Copilot | {copilot_total} | {copilot_merged} | {copilot_rate:.2f}% | N/A           |
-| Codex   | {codex_total} | {codex_merged} | {codex_rate:.2f}% | N/A           |
-| Devin   | N/A       | N/A        | N/A        | {devin_commits} |
-| Jules   | N/A       | N/A        | N/A        | {jules_commits} |"""
+| Service | Total PRs | Total Commits |
+| ------- | --------- | ------------- |
+| Copilot | {copilot_total} | N/A           |
+| Codex   | {codex_total} | N/A           |
+| Devin   | N/A       | {devin_commits} |
+| Jules   | N/A       | {jules_commits} |"""
 
     # Read the current README content
     readme_content = readme_path.read_text()
@@ -335,75 +242,71 @@ def update_github_pages(df):
     # Get the latest data
     latest = df.iloc[-1]
     
-    # Calculate merge rates
-    copilot_rate = (latest.copilot_merged / latest.copilot_total * 100) if latest.copilot_total > 0 else 0
-    codex_rate = (latest.codex_merged / latest.codex_total * 100) if latest.codex_total > 0 else 0
-    
     # Format numbers with commas
     copilot_total = f"{latest.copilot_total:,}"
-    copilot_merged = f"{latest.copilot_merged:,}"
+    # copilot_merged = f"{latest.copilot_merged:,}" # Removed
     codex_total = f"{latest.codex_total:,}"
-    codex_merged = f"{latest.codex_merged:,}"
+    # codex_merged = f"{latest.codex_merged:,}" # Removed
     devin_commits = f"{latest.devin_commits:,}"
     jules_commits = f"{latest.jules_commits:,}"
+    # copilot_rate = (latest.copilot_merged / latest.copilot_total * 100) if latest.copilot_total > 0 else 0 # Removed
+    # codex_rate = (latest.codex_merged / latest.codex_total * 100) if latest.codex_total > 0 else 0 # Removed
     
     # Current timestamp for last updated
     timestamp = dt.datetime.now().strftime("%B %d, %Y %H:%M UTC")
     
     # Read the current index.html content
     index_content = index_path.read_text()
+
+    # Define new table structure (header and rows)
+    new_header_row = '<tr>\n                        <th>Service</th>\n                        <th>Total PRs</th>\n                        <th>Total Commits</th>\n                    </tr>'
     
-    # Update the table data
+    copilot_row_html = f'<tr>\n                        <td>Copilot</td>\n                        <td>{copilot_total}</td>\n                        <td>N/A</td>\n                    </tr>'
+    codex_row_html = f'<tr>\n                        <td>Codex</td>\n                        <td>{codex_total}</td>\n                        <td>N/A</td>\n                    </tr>'
+    devin_row_html = f'<tr>\n                        <td>Devin</td>\n                        <td>N/A</td>\n                        <td>{devin_commits}</td>\n                    </tr>'
+    jules_row_html = f'<tr>\n                        <td>Jules</td>\n                        <td>N/A</td>\n                        <td>{jules_commits}</td>\n                    </tr>'
+
+    # Update table header
     index_content = re.sub(
-        r'(<tr>\s*<td>Copilot</td>\s*<td>)[^<]*(</td>\s*<td>)[^<]*(</td>\s*<td>)[^<]*(</td>\s*</tr>)',
-        rf'\g<1>{copilot_total}\g<2>{copilot_merged}\g<3>{copilot_rate:.2f}%\g<4>',
-        index_content
-    )
-    
-    index_content = re.sub(
-        r'(<tr>\s*<td>Codex</td>\s*<td>)[^<]*(</td>\s*<td>)[^<]*(</td>\s*<td>)[^<]*(</td>\s*</tr>)',
-        rf'\g<1>{codex_total}\g<2>{codex_merged}\g<3>{codex_rate:.2f}%\g<4>',
-        index_content
+        r'<thead>\s*<tr>.*?</tr>\s*</thead>',
+        f'<thead>\n                    {new_header_row}\n                </thead>',
+        index_content,
+        flags=re.DOTALL
     )
 
-    # Ensure the table has a "Total Commits" column header
-    if "<th>Total Commits</th>" not in index_content:
-        index_content = index_content.replace("<th>Merge Rate</th>", "<th>Merge Rate</th>\n                        <th>Total Commits</th>")
+    # Update or add Copilot row
+    copilot_row_pattern = re.compile(r'<tr>\s*<td>Copilot</td>.*?</tr>', re.DOTALL)
+    if copilot_row_pattern.search(index_content):
+        index_content = copilot_row_pattern.sub(copilot_row_html, index_content)
+    else:
+        # Add if not found (should always be found if tbody exists)
+        index_content = index_content.replace('</tbody>', f'{copilot_row_html}\n                    </tbody>')
 
-    # Update Copilot and Codex rows to include N/A for Total Commits
-    # Using \g<1> for consistency, though \1 would likely be fine here as it's at the end of the raw string part.
-    index_content = re.sub(
-        r'(<td>Copilot</td>\s*<td>[^<]*</td>\s*<td>[^<]*</td>\s*<td>[^<]*%</td>)',
-        r'\g<1>\n                        <td>N/A</td>',
-        index_content
-    )
-    index_content = re.sub(
-        r'(<td>Codex</td>\s*<td>[^<]*</td>\s*<td>[^<]*</td>\s*<td>[^<]*%</td>)',
-        r'\g<1>\n                        <td>N/A</td>',
-        index_content
-    )
-    
-    # Add or update Devin row
+    # Update or add Codex row
+    codex_row_pattern = re.compile(r'<tr>\s*<td>Codex</td>.*?</tr>', re.DOTALL)
+    if codex_row_pattern.search(index_content):
+        index_content = codex_row_pattern.sub(codex_row_html, index_content)
+    else:
+        index_content = index_content.replace('</tbody>', f'{codex_row_html}\n                    </tbody>')
+
+    # Update or add Devin row
     devin_row_pattern = re.compile(r'<tr>\s*<td>Devin</td>.*?</tr>', re.DOTALL)
-    devin_row_html = f'<tr>\n                        <td>Devin</td>\n                        <td>N/A</td>\n                        <td>N/A</td>\n                        <td>N/A</td>\n                        <td>{devin_commits}</td>\n                    </tr>'
     if devin_row_pattern.search(index_content):
         index_content = devin_row_pattern.sub(devin_row_html, index_content)
     else:
-        index_content = index_content.replace(
-            '</tbody>',
-            f'{devin_row_html}\n                    </tbody>'
-        )
+        index_content = index_content.replace('</tbody>', f'{devin_row_html}\n                    </tbody>')
 
     # Add or update Jules row
     jules_row_pattern = re.compile(r'<tr>\s*<td>Jules</td>.*?</tr>', re.DOTALL)
-    jules_row_html = f'<tr>\n                        <td>Jules</td>\n                        <td>N/A</td>\n                        <td>N/A</td>\n                        <td>N/A</td>\n                        <td>{jules_commits}</td>\n                    </tr>'
     if jules_row_pattern.search(index_content):
         index_content = jules_row_pattern.sub(jules_row_html, index_content)
     else:
         # Insert before the last </tbody>
         parts = index_content.rsplit('</tbody>', 1)
-        index_content = parts[0] + f'{jules_row_html}\n                    </tbody>' + parts[1] if len(parts) == 2 else index_content.replace('</tbody>', f'{jules_row_html}\n                    </tbody>')
-
+        if len(parts) == 2:
+            index_content = parts[0] + f'{jules_row_html}\n                    </tbody>' + parts[1]
+        else: # Fallback if rsplit doesn't find tbody (e.g. empty tbody)
+            index_content = index_content.replace('</tbody>', f'{jules_row_html}\n                    </tbody>')
 
     # Update the last updated timestamp
     index_content = re.sub(
