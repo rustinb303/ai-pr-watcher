@@ -19,7 +19,7 @@ Explore the GitHub search queries used:
 
 | Service | Total PRs | Merged PRs | Merge Rate | Total Commits |
 | ------- | --------- | ---------- | ---------- | ------------- |
-| Copilot | 909,287 | 614,183 | 67.55% | N/A           |
-| Codex   | 2,864,188 | 2,482,234 | 86.66% | N/A           |
-| Devin   | N/A       | N/A        | N/A        | 106,479 |
-| Jules   | N/A       | N/A        | N/A        | 505,845 |
+| Copilot | 909,891 | 614,615 | 67.55% | N/A           |
+| Codex   | 2,865,234 | 2,483,124 | 86.66% | N/A           |
+| Devin   | N/A       | N/A        | N/A        | 106,875 |
+| Jules   | N/A       | N/A        | N/A        | 506,315 |
